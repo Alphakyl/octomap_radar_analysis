@@ -1,0 +1,6 @@
+<launch>
+   <node pkg="radar_learning" type="radar_denoise.py" name="radar_denoise" >
+    <param name="radar_topic" value="/mmWaveDataHdl/RScan" />
+    <param name="model_file" value="$(find radar_learning)/model_small_batch.pt" />
+  </node>
+</launch>

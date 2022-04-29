@@ -1,0 +1,45 @@
+<!-- 
+  Example launch file for octomap_server mapping: 
+  Listens to incoming PointCloud2 data and incrementally builds an octomap. 
+  The data is sent out in different representations. 
+
+  Copy this file into your workspace and adjust as needed, see
+  www.ros.org/wiki/octomap_server for details  
+-->
+<launch>
+
+  <!-- LAUNCH MIMO NODE -->
+  <node pkg="dca1000_device" type="mimo_node" name="cascade_mimo_node">
+    <param name="in_radar_topic" value="/cascade/data_cube" />
+    <param name="num_azimuth_beams" value="128" />
+    <param name="num_elevation_beams" value="1" />
+    <param name="antenna_config" value="$(find dca1000_device)/cfg/cascade/cascade_2243_antenna_cfg.txt" />
+    <param name="remove_antenna_coupling" value="false" />
+    <param name="coupling_calib_file" value="" />
+    <param name="phase_freq_calib" value="true" />
+    <param name="phase_calib_file" value="$(find dca1000_device)/cfg/cascade/cal_data.json" />
+    <param name="collapse_doppler" value="true" />
+    <param name="publish_pcl" value="true" />
+  </node>
+    
+  <node pkg="octomap_server" type="real_sar_map_server_node" name="radar_map_server" >
+    <param name="resolution" value="0.5" />
+    <param name="frame_id" value="world" />
+    <param name="base_frame_id" type="string" value="world" />
+    <param name="sensor_model/max_range" value="7.0" />
+    <param name="sensor_model/min_range" value="0.25" />
+    <param name="sensor_model/model" value="radar_image" />
+    <param name="filter_speckles" value="false" />
+    <param name="speckle_size" value="3" />
+    <param name="sensor_model/max" value="0.9" />
+    <param name="sensor_model/min" value="0.45" />
+    <param name="sensor_model/hit" value="0.7" />
+    <param name="sensor_model/miss" value="0.4" />
+    <param name="intensity_threshold" value="40" />
+    <param name="pointcloud_max_z" value="2" />
+    <param name="pointcloud_min_z" value="-2" />
+    <param name="sensor_model/azimuth_fov" value="1.0" />
+    <remap from="/cloud_in" to="/mimo_pcl" />
+    <remap from="/occupied_cells_vis_array" to="/radar_map" />
+  </node>
+</launch>

@@ -1,0 +1,70 @@
+<?xml version="1.0" ?>
+
+<launch>
+	<!-- __________________________ BEGIN LAUNCH SETUP __________________________ -->
+	<!-- Basic Arguments -->
+	<arg name="enable_rviz"   		default="1"/>
+  	<arg name="enable_sim"    		default="1"/>
+  	<arg name="robot_state" 		default="1"/>
+
+	<!-- Processing Arguments -->
+	<!-- Lidar -->
+  	<arg name="enable_lidar_mapping" 		default="0"/>
+	<arg name="enable_lidar_filtering"		default="0"/>
+	<!-- Radar -->
+	<arg name="enable_radar_filtering"		default="1"/>
+	<arg name="enable_radar_mapping"		default="1"/>
+	<arg name="enable_sar_mapping"			default="0"/>
+	<!-- Octomap Analysis -->
+	<!-- TODO -->
+
+	<!-- Bag Arguments -->
+	<arg name="enable_bagging" default="0"/>
+	<arg name="input_bag_flags" default="--clock --pause -k"/>
+	<arg name="input_bag_filename" default="/media/kyle/45bfdd4b-6c7c-4d6a-a09d-21fbe576aa92/ec_data/12_21_2020/ec_hallways_run0.bag"/>
+	<arg name="output_bag_filename" default="/home/kyle/data/radar/coloradar/octomap_testing_0"/>
+	<arg name="bag_topics" default="octomap_binary"/>
+
+	<!-- For bags -->
+	<param name="/use_sim_time" value="true" if="$(arg enable_sim)"/>
+	
+	<!-- __________________________ END LAUNCH SETUP __________________________  -->
+
+	<!-- __________________________ BEGIN LAUNCH FILES __________________________ -->
+
+	<!-- Publish Odometry as TF -->
+	<node pkg="isrr_analysis" name="odom2tf" type="odom2tf"/>
+
+	<!-- Lidar setup -->
+	<include file="$(find isrr_analysis)/launch/octomap_mapping.launch" if="$(arg enable_lidar_mapping)"/>
+	<include file="$(find isrr_analysis)/launch/lidar_filter.launch" if="$(arg enable_lidar_filtering)"/>
+	<include file="$(find isrr_analysis)/launch/octomap_lidar_filter_mapping.launch" if="$(arg enable_lidar_filtering)"/>
+	
+	
+	<!-- Radar setup -->
+	<include file="$(find isrr_analysis)/launch/radar_pointnet_filtering.launch" if="$(arg enable_radar_filtering)"/>
+	<include file="$(find isrr_analysis)/launch/octomap_radar_mapping.launch" if="$(arg enable_radar_mapping)">
+		<arg name="enable_radar_filtering" value="$(arg enable_radar_filtering)"/>
+	</include>
+	<include file="$(find isrr_analysis)/launch/octomap_sar_mapping.launch" if="$(arg enable_sar_mapping)"/>
+
+	<!-- Analysis -->
+	<!-- TODO -->
+
+
+	<!-- __________________________ END LAUNCH FILES __________________________ -->
+
+
+	<!-- __________________________ BEGIN BAGS/RVIZ __________________________ -->
+	<!-- RVIZ -->
+	<include file="$(find isrr_analysis)/launch/view_bag.launch"/>
+
+	<!-- Record Odom -->
+	<node pkg="rosbag" type="record" name="recorder" output="screen" args="-O $(arg output_bag_filename) topics $(arg bag_topics)" if="$(arg enable_bagging)"/>
+	
+	<!-- Play Original -->
+	<node pkg="rosbag" type="play" name="player" args="$(arg input_bag_flags) $(arg input_bag_filename)" if="$(arg enable_sim)"/>
+	
+	<!-- __________________________ END BAGS/RVIZ __________________________ -->
+	
+</launch>

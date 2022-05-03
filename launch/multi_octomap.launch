@@ -9,11 +9,11 @@
 
 	<!-- Processing Arguments -->
 	<!-- Lidar -->
-  	<arg name="enable_lidar_mapping" 		default="0"/>
+  	<arg name="enable_lidar_mapping" 		default="1"/>
 	<arg name="enable_lidar_filtering"		default="0"/>
 	<!-- Radar -->
-	<arg name="enable_radar_filtering"		default="1"/>
-	<arg name="enable_radar_mapping"		default="1"/>
+	<arg name="enable_radar_filtering"		default="0"/>
+	<arg name="enable_radar_mapping"		default="0"/>
 	<arg name="enable_sar_mapping"			default="0"/>
 	<!-- Octomap Analysis -->
 	<!-- TODO -->
@@ -50,6 +50,15 @@
 
 	<!-- Analysis -->
 	<!-- TODO -->
+	<node pkg="isrr_analysis" name="radar_octomap_count" type="octomap_voxel_counter" ns="lidar" if="$(arg enable_lidar_mapping)">
+		<remap from="octomap_binary" to="/lidar/octomap_binary"/>
+	</node>
+	<node pkg="isrr_analysis" name="radar_octomap_count" type="octomap_voxel_counter" ns="lidar_filtered" if="$(arg enable_lidar_filtering)">
+		<remap from="octomap_binary" to="/lidar_filtered/octomap_binary"/>
+	</node>
+	<node pkg="isrr_analysis" name="radar_octomap_count" type="octomap_voxel_counter" ns="radar" if="$(arg enable_radar_mapping)">
+		<remap from="octomap_binary" to="/radar/octomap_binary"/>
+	</node>
 
 
 	<!-- __________________________ END LAUNCH FILES __________________________ -->

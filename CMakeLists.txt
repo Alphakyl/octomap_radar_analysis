@@ -10,6 +10,7 @@ project(isrr_analysis)
 find_package(catkin REQUIRED COMPONENTS
   dca1000_device
   octomap_msgs
+  octomap_ros
   radar_learning
   roscpp
   rospy
@@ -17,7 +18,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   nav_msgs
   geometry_msgs
+  pcl_ros
+  pcl_conversions
 )
+
+# find_package(Eigen3 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -124,6 +129,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+#  ${EIGEN_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -142,7 +148,10 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/isrr_analysis_node.cpp)
 add_executable(odom2tf src/odom2tf.cpp)
 target_link_libraries(odom2tf ${catkin_LIBRARIES})
-
+add_executable(octomap_voxel_counter src/octomap_voxel_counter.cpp)
+target_link_libraries(octomap_voxel_counter ${catkin_LIBRARIES})
+add_executable(point_cloud_angle_filter src/point_cloud_angle_filter.cpp)
+target_link_libraries(point_cloud_angle_filter ${catkin_LIBRARIES})
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use

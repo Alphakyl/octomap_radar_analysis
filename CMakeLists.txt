@@ -152,6 +152,8 @@ add_executable(octomap_voxel_counter src/octomap_voxel_counter.cpp)
 target_link_libraries(octomap_voxel_counter ${catkin_LIBRARIES})
 add_executable(point_cloud_angle_filter src/point_cloud_angle_filter.cpp)
 target_link_libraries(point_cloud_angle_filter ${catkin_LIBRARIES})
+add_executable(compare_octomaps src/compare_octomaps.cpp)
+target_link_libraries(compare_octomaps ${catkin_LIBRARIES})
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use

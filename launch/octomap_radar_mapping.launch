@@ -10,24 +10,59 @@
   <arg name="enable_radar_filtering"		default="0"/>
 
 	<node pkg="octomap_server" type="radar_point_octomap_server_node" name="octomap_server" ns="radar_point_cloud">
-		<param name="resolution" value="0.15" />
+		<param name="resolution" value="0.5" /> <!-- 0.2 - 0.5 -->
 		
 		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
 		<param name="frame_id" type="string" value="world" />
     <param name="base_frame_id" type="string" value="world"/>
 		
 		<!-- maximum range to integrate (speedup!) -->
-		<param name="sensor_model/max_range" value="10.0" />
+		<param name="sensor_model/max_range" value="7.0" /> <!-- Lower max range can have some benefit, especially indoors -->
     <param name="sensor_model/azimuth_fov" value="0.7853982"/>
     <param name="sensor_model/elevation_fov" value="0.7853982"/>
+    <!-- Local mapping specific parameter -->
+		<param name="local_mapping" value="false"/>
     <param name="num_scans_in_window" value="100"/>
-		
-    <param name="bin_width" value="0.15"/>
 
+    <param name="bin_width" value="0.15"/> 
+
+    <!-- Hit/Miss/min/max probabilities are important -->
+    <!-- filter speckles (true) and speckle size (3/4) parameters may also need adjusting -->
+    <!-- Set min range parameter to avoid self hits -->
+    <param name="sensor_model/min_range" value="1.0" />
+    <param name="sensor_model/hit" value="0.7"/>  <!--0.7 good with 0.5 resolution-->
+    <param name="sensor_model/miss" value="0.44"/> <!--0.44 good with 0.5 resolution-->
+    <param name="speckle_size" value="4"/>
+    <!-- Makes log odds static to avoid runaway after threshold -->
+    <!-- <param name="sensor_model/min" value=""/> -->
+    <!-- <param name="sensor_model/max" value=""/> -->
 
 		<!-- data source to integrate (PointCloud2) -->
 		<remap from="cloud_in" to="/mmWaveDataHdl/RScan" if="$(eval arg('enable_radar_filtering')==0)"/>
     <remap from="cloud_in" to="/mmWaveDataHdl/RScan/filtered" if="$(arg enable_radar_filtering)"/>
 	
 	</node>
+  
+  <node pkg="octomap_server" type="octomap_server_node" name="octomap_server" ns="radar_point_cloud_lidar_processing">
+		<param name="resolution" value="0.5" />
+		
+		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
+		<param name="frame_id" type="string" value="world" />
+		<param name="base_frame_id" type="string" value="world"/>
+		
+		<!-- maximum range to integrate (speedup!) -->
+		<param name="sensor_model/max_range" value="7.0" />
+		<param name="sensor_model/min_range" value="1.0" />
+		<param name="sensor_model/hit" value=".51"/>
+		<param name="sensor_model/miss" value=".49"/>
+    <param name="speckle_size" value="4"/>
+    <param name="sensor_model/min" value="0.97"/>
+    <param name="sensor_model/max" value="0.12"/>
+
+		<!-- data source to integrate (PointCloud2) -->
+		<remap from="cloud_in" to="/mmWaveDataHdl/RScan" if="$(eval arg('enable_radar_filtering')==0)"/>
+    <remap from="cloud_in" to="/mmWaveDataHdl/RScan/filtered" if="$(arg enable_radar_filtering)"/>
+	</node>
+
+
 </launch>

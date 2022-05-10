@@ -119,8 +119,10 @@ int main(int argc, char** argv){
   int in1_free = 0;
   int in2_occ = 0;
   int in2_free = 0;
-  int in_both_occ = 0;
-  int in_both_free = 0;
+  int true_pos = 0;
+  int true_neg = 0;
+  int false_pos = 0;
+  int false_neg = 0;
   int not_in1_occ = 0;
   int not_in2_occ = 0;
   int not_in1_free = 0;
@@ -141,8 +143,21 @@ int main(int argc, char** argv){
     // Check the other tree to see if it's in both trees
     OcTreeNode* node2 = tree2->search(it.getCoordinate());
     if (node2) {
-      if (node2->getOccupancy() > 0.5) in_both_occ++;
-      else in_both_free++;
+      bool occupied2;
+      if(node2->getOccupancy()>0.5){
+        occupied2 = true;
+      } else {
+        occupied2 = false;
+      }
+      if (occupied2 && occupied){
+        true_pos++;
+      } else if(occupied2 && !occupied ) {
+        false_pos++;
+      } else if(!occupied2 && occupied) {
+        false_neg++;
+      } else {
+        true_neg++;
+      }
     } else {
       // Count how many nodes are missing from tree2
       if (occupied) not_in2_occ++;
@@ -195,7 +210,7 @@ int main(int argc, char** argv){
   // Output statistics
   int in1 = in1_occ + in1_free;
   int in2 = in2_occ + in2_free;
-  int in_both = in_both_occ + in_both_free;
+  int in_both = true_pos + true_neg;
   int not_in1 = not_in1_occ + not_in1_free;
   int not_in2 = not_in2_occ + not_in2_free;
   float occ_p, free_p, total_p;
@@ -207,7 +222,8 @@ int main(int argc, char** argv){
   std::cout << "Node counts: (occupied / free / total)" << std::endl;
   std::cout << "Nodes in tree 1: " << in1_occ << " / " << in1_free << " / " << in1 << std::endl;
   std::cout << "Nodes in tree 2: " << in2_occ << " / " << in2_free << " / " << in2 << std::endl;
-  std::cout << "Nodes in both trees: " << in_both_occ << " / " << in_both_free << " / " << in_both << std::endl;
+  std::cout << "Nodes in both trees: " << true_pos << " / " << true_neg << " / " << in_both << std::endl;
+  std::cout << "False Positive / False Negative" << false_pos << " / " << false_neg << std::endl;
 
   occ_p = (float)not_in1_occ / (float)in2_occ * 100.0;
   free_p = (float)not_in1_free / (float)in2_free * 100.0;

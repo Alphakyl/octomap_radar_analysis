@@ -8,7 +8,7 @@
 -->
 <launch>
 	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" ns="lidar">
-		<param name="resolution" value="0.5" />
+		<param name="resolution" value="0.15" />
 		
 		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
 		<param name="frame_id" type="string" value="world" />
@@ -19,6 +19,7 @@
 		<param name="sensor_model/min_range" value="0.0" />
 		<param name="sensor_model/hit" value=".95"/>
 		<param name="sensor_model/miss" value=".48"/>
+		<!-- <param name="ground_filter/plane_distance" value="1" -->
 		
 		<!-- data source to integrate (PointCloud2) -->
 		<remap from="cloud_in" to="/os1_cloud_node/points" />

@@ -8,10 +8,8 @@ project(isrr_analysis)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  dca1000_device
   octomap_msgs
   octomap_ros
-  radar_learning
   roscpp
   rospy
   sensor_msgs

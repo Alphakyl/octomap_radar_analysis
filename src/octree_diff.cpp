@@ -9,7 +9,7 @@
 std::pair<octomap::OcTree, octomap::OcTree> calcOctreeDiff(
         const octomap::OcTree& tree1,
         const octomap::OcTree& tree2,
-        const double updateEps = 0.001
+        const double updateEps
 ) {
     double resolution = tree1.getResolution();
     // pure diff between tree1 and tree2 (can have negative values)
@@ -21,10 +21,12 @@ std::pair<octomap::OcTree, octomap::OcTree> calcOctreeDiff(
 
     for (octomap::OcTree::leaf_iterator it = tree2.begin_leafs(), end = tree2.end_leafs(); it != end; ++it) {
         // current node's occupancy odds
-        double logOdds =  it->getLogOdds();
+        double logOdds = it->getLogOdds();
         double occupancyUpdate = logOdds;
+        
         // current node's coordinates
         octomap::point3d nodeCoords = it.getCoordinate();
+        bool nodeOccupied = it->getValue();
 
         // current node in tree1
         octomap::OcTreeNode* nodeInTree1 = tree1.search(nodeCoords);
@@ -34,8 +36,11 @@ std::pair<octomap::OcTree, octomap::OcTree> calcOctreeDiff(
         }
         // record update if it's above threshold
         if (std::fabs(occupancyUpdate) >= updateEps) {
-            updateTree.updateNode(nodeCoords, logOdds);
-            diffTree.updateNode(nodeCoords, occupancyUpdate);
+            octomap::OcTreeNode* updateNode = updateTree.updateNode(nodeCoords, nodeOccupied);
+            updateNode->setLogOdds(logOdds);
+            
+            octomap::OcTreeNode* diffNode = diffTree.updateNode(nodeCoords, nodeOccupied);
+            diffNode->setLogOdds(occupancyUpdate);
         }
 
         std::ostringstream oss;
@@ -53,7 +58,8 @@ std::pair<octomap::OcTree, octomap::OcTree> calcOctreeDiff(
             // current node was not checked in the 1st loop, means it's not present in tree2
             double occupancyUpdate = -(it->getLogOdds());
             if (std::fabs(occupancyUpdate) >= updateEps) {
-                diffTree.updateNode(nodeCoords, occupancyUpdate);
+                octomap::OcTreeNode* diffNode = diffTree.updateNode(nodeCoords, false);
+                diffNode->setLogOdds(occupancyUpdate);
             }
         }
     }

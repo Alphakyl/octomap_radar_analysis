@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+
+<launch>
+    <node pkg="isrr_analysis" type="octomap_postprocess" name="octomap_postprocess" output="screen">
+        <param name="input_bag_path" value="/home/arpg/mapping/coloradar/ec_hallways_run0_lidar_octomap.bag" />
+        <param name="input_topic" value="/lidar_filtered/octomap_full" />
+    </node>
+</launch>
+

@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+
+<launch>
+
+	<node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/arpg/mapping/coloradar/ec_hallways_run0.bag"/>
+	<node pkg="tf2_ros" type="static_transform_publisher" name="os1_link_joint" args="0.0 0.0 0.03618 3.14159 0 0 os1_sensor os1_lidar"/>
+	
+	<node pkg="isrr_analysis" name="odom2tf" type="odom2tf"/>
+	<include file="$(find isrr_analysis)/launch/octomap_mapping.launch"/>
+	
+	<node name="bag_record" pkg="rosbag" type="record" args="record -o /home/arpg/mapping/coloradar/lidar_octomap.bag /lidar_filtered/octomap_full"/>
+	
+
+</launch>

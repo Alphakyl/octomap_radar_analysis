@@ -78,7 +78,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES octree_diff
+  LIBRARIES octree_diff pcl_sampling
 #  CATKIN_DEPENDS dca1000_device octomap_msgs radar_learning roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
@@ -94,6 +94,7 @@ include_directories(
 )
 
 add_library(octree_diff src/octree_diff.cpp)
+add_library(pcl_sampling src/pcl_sampling.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -109,7 +110,7 @@ target_link_libraries(point_cloud_angle_filter ${catkin_LIBRARIES})
 add_executable(compare_octomaps src/compare_octomaps.cpp)
 target_link_libraries(compare_octomaps ${catkin_LIBRARIES})
 add_executable(octomap_postprocess src/octomap_postprocess.cpp)
-target_link_libraries(octomap_postprocess octree_diff ${catkin_LIBRARIES})
+target_link_libraries(octomap_postprocess octree_diff pcl_sampling ${catkin_LIBRARIES})
 
 
 #############

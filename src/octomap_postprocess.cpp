@@ -2,6 +2,7 @@
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
 #include <boost/foreach.hpp>
+#include "std_msgs/Float64MultiArray.h"
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -19,6 +20,7 @@
 #include <octomap_msgs/Octomap.h>
 
 #include "octree_diff.h"
+#include "pcl_sampling.h"
 
 
 Eigen::Affine3d poseMsgToEigen(const nav_msgs::Odometry::ConstPtr& msg)
@@ -34,25 +36,29 @@ Eigen::Affine3d poseMsgToEigen(const nav_msgs::Odometry::ConstPtr& msg)
 }
 
 
-std::tuple<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, visualization_msgs::MarkerArray> octreeToPointCloud2(
+std::tuple<std_msgs::Float64MultiArray, pcl::PointCloud<pcl::PointXYZ>, pcl::PointCloud<pcl::PointXYZ>, pcl::PointCloud<pcl::PointXYZ>, visualization_msgs::MarkerArray> octreeToPointCloud(
     const octomap::OcTree& tree,
     const std::string& frame_id,
     const ros::Time& stamp,
     const Eigen::Affine3d& center,
-    double marker_lifetime = 0.1
+    double marker_lifetime = 0.1,
+    double voxel_size = 0.5
 ) {
-    pcl::PointCloud<pcl::PointXYZ> pclCloudCentered;
-    pcl::PointCloud<pcl::PointXYZ> pclCloud;
+    pcl::PointCloud<pcl::PointXYZ> pclUnoccupied, pclCloudCentered, pclCloud;
     visualization_msgs::MarkerArray markerArray;
+    std_msgs::Float64MultiArray occupancyOdds;
+    occupancyOdds.data.clear();
     size_t id = 0;
     
     for(octomap::OcTree::leaf_iterator it = tree.begin_leafs(), end=tree.end_leafs(); it!= end; ++it) {
+        Eigen::Vector3d pointOrigEig(it.getX(), it.getY(), it.getZ());
+        Eigen::Vector3d pointCenteredEig = center * pointOrigEig;
+        pcl::PointXYZ pointOrig(pointOrigEig[0], pointOrigEig[1], pointOrigEig[2]);
+        pcl::PointXYZ pointCentered(pointCenteredEig[0], pointCenteredEig[1], pointCenteredEig[2]);
+        pclUnoccupied.points.push_back(pointCentered);
+        occupancyOdds.data.push_back(it->getLogOdds());
+        
         if(tree.isNodeOccupied(*it)){
-            Eigen::Vector3d pointOrigEig(it.getX(), it.getY(), it.getZ());
-            Eigen::Vector3d pointCenteredEig = center * pointOrigEig;
-            pcl::PointXYZ pointOrig(pointOrigEig[0], pointOrigEig[1], pointOrigEig[2]);
-            pcl::PointXYZ pointCentered(pointCenteredEig[0], pointCenteredEig[1], pointCenteredEig[2]);
-
             pclCloud.points.push_back(pointOrig);
             pclCloudCentered.points.push_back(pointCentered);
             
@@ -83,6 +89,7 @@ std::tuple<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, visualization_msg
         }
     }
 
+/**
     sensor_msgs::PointCloud2 cloudCentered;
     sensor_msgs::PointCloud2 cloud;
     pcl::toROSMsg(pclCloudCentered, cloudCentered);
@@ -91,8 +98,18 @@ std::tuple<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, visualization_msg
     cloudCentered.header.stamp = stamp;
     cloud.header.frame_id = frame_id;
     cloud.header.stamp = stamp;
+**/
     
-    return std::make_tuple(cloudCentered, cloud, markerArray);
+    return std::make_tuple(occupancyOdds, pclUnoccupied, pclCloudCentered, pclCloud, markerArray);
+}
+
+
+sensor_msgs::PointCloud2 pclToMsg(pcl::PointCloud<pcl::PointXYZ>& cloud, const std::string& frame_id, const ros::Time& stamp) {
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg(cloud, cloudMsg);
+    cloudMsg.header.frame_id = frame_id;
+    cloudMsg.header.stamp = stamp;
+    return cloudMsg;
 }
 
 
@@ -100,13 +117,33 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "octomap_postprocess_node");
     ros::NodeHandle nh("~");
 
+// PROCESS PARAMETERS
     std::string input_bag_path, input_topic, odometry_topic;
-    double marker_lifetime;
-    nh.getParam("input_bag_path", input_bag_path);
-    nh.getParam("input_topic", input_topic);
-    nh.getParam("odometry_topic", odometry_topic);
-    nh.getParam("marker_lifetime", marker_lifetime);
-    
+    double marker_lifetime = 0.1, voxel_radius = 0;
+    int target_N_points = 0;
+    if (!nh.getParam("input_bag_path", input_bag_path) || input_bag_path.empty()) {
+        ROS_ERROR("No input_bag_path provided");
+    }
+    if (!nh.getParam("input_topic", input_topic) || input_topic.empty()) {
+        ROS_ERROR("No input_topic provided");
+    }
+    if (!nh.getParam("odometry_topic", odometry_topic) || odometry_topic.empty()) {
+        ROS_ERROR("No odometry_topic provided");
+    }
+    if (nh.getParam("marker_lifetime", marker_lifetime) && marker_lifetime < 0) {
+        ROS_ERROR("marker_lifetime can't be negative");
+    }
+    if (nh.getParam("voxel_radius", voxel_radius) != nh.getParam("target_N_points", target_N_points)) {
+        ROS_ERROR("Either both voxel_radius and target_N_points must be specified or neither");
+    } 
+    if (voxel_radius < 0) {
+        ROS_ERROR("voxel_radius can't be negative");
+    }
+    if (target_N_points < 0) {
+        ROS_ERROR("target_N_points can't be negative");
+    }
+
+// PROCESS INPUT BAG
     std::string output_bag_path;
     std::string extension = ".bag";
     if (input_bag_path.size() > extension.size() &&
@@ -127,7 +164,7 @@ int main(int argc, char** argv) {
     }
     rosbag::View view(input_bag, rosbag::TopicQuery({input_topic, odometry_topic}));
 
-    // Check if required topics exist
+    // check if required topics exist
     bool input_topic_found = false, odometry_topic_found = false;
     BOOST_FOREACH(const rosbag::ConnectionInfo *info, view.getConnections()) {
       if (info->topic == input_topic) {
@@ -145,7 +182,8 @@ int main(int argc, char** argv) {
         ROS_ERROR("Required topic '%s' not found in file '%s'", odometry_topic.c_str(), input_bag_path.c_str());
         return 1;
     }
-
+    
+// PROCESS DATA
     Eigen::Affine3d odometry_position = Eigen::Affine3d::Identity();
     octomap::OcTree* prev_tree = nullptr;
 
@@ -166,26 +204,52 @@ int main(int argc, char** argv) {
                 std::pair<octomap::OcTree, octomap::OcTree> diff_trees = calcOctreeDiff(*prev_tree, *current_tree);
                 octomap_msgs::Octomap diff_tree_msg, update_tree_msg;
                 octomap_msgs::binaryMapToMsg(diff_trees.first, update_tree_msg);
-                octomap_msgs::binaryMapToMsg(diff_trees.second, diff_tree_msg);
+                // octomap_msgs::binaryMapToMsg(diff_trees.second, diff_tree_msg);
                 
-                diff_tree_msg.header.frame_id = frame_id;
-                diff_tree_msg.header.stamp = stamp;
+                // diff_tree_msg.header.frame_id = frame_id;
+                // diff_tree_msg.header.stamp = stamp;
                 update_tree_msg.header.frame_id = frame_id;
                 update_tree_msg.header.stamp = stamp;
 
-                auto [update_pcl_centered, update_pcl, update_array] = octreeToPointCloud2(diff_trees.first, frame_id, stamp, odometry_position, marker_lifetime);
-                auto [diff_pcl_centered, diff_pcl, diff_array] = octreeToPointCloud2(diff_trees.second, frame_id, stamp, odometry_position, marker_lifetime);
+                auto [occupancyOddsMsg, updatePclUnoccupied, update_pcl_centered, update_pcl, update_array] = octreeToPointCloud(diff_trees.first, frame_id, stamp, odometry_position, marker_lifetime);
+                // auto [diff_pcl_centered, diff_pcl, diff_array] = octreeToPointCloud(diff_trees.second, frame_id, stamp, odometry_position, marker_lifetime);
+                ROS_INFO("Update tree: %lu points", update_pcl_centered.points.size());
+                // ROS_INFO("Diff tree: %lu points", diff_pcl_centered.points.size());
+                
+                sensor_msgs::PointCloud2 updatePclUnoccupiedMsg = pclToMsg(updatePclUnoccupied, frame_id, stamp);
+                sensor_msgs::PointCloud2 updatePclCenteredMsg = pclToMsg(update_pcl_centered, frame_id, stamp);
+                sensor_msgs::PointCloud2 updatePclMsg = pclToMsg(update_pcl, frame_id, stamp);
+                // sensor_msgs::PointCloud2 diffPclCenteredMsg = pclToMsg(diff_pcl_centered, frame_id, stamp);
+                // sensor_msgs::PointCloud2 diffPclMsg = pclToMsg(diff_pcl, frame_id, stamp);                
 
                 output_bag.write(input_topic + "/update", msg.getTime(), update_tree_msg);
-                output_bag.write(input_topic + "/update/pcl_centered", msg.getTime(), update_pcl_centered);
-                output_bag.write(input_topic + "/update/pcl", msg.getTime(), update_pcl);
+                output_bag.write(input_topic + "/update/pcl_centered", msg.getTime(), updatePclCenteredMsg);
+                output_bag.write(input_topic + "/update/pcl", msg.getTime(), updatePclMsg);
                 output_bag.write(input_topic + "/update/array", msg.getTime(), update_array);
-                
+                output_bag.write(input_topic + "/update/pcl_centered_full", msg.getTime(), updatePclUnoccupiedMsg);
+                output_bag.write(input_topic + "/update/pcl_occupancy_odds", msg.getTime(), occupancyOddsMsg);
+                /**
                 output_bag.write(input_topic + "/diff", msg.getTime(), diff_tree_msg);
-                output_bag.write(input_topic + "/diff/pcl_centered", msg.getTime(), diff_pcl_centered);
-                output_bag.write(input_topic + "/diff/pcl", msg.getTime(), diff_pcl);
+                output_bag.write(input_topic + "/diff/pcl_centered", msg.getTime(), diffPclCenteredMsg);
+                output_bag.write(input_topic + "/diff/pcl", msg.getTime(), diffPclMsg);
                 output_bag.write(input_topic + "/diff/array", msg.getTime(), diff_array);
+                **/
                 
+                if (target_N_points > 0) {
+                    if (target_N_points > update_pcl_centered.points.size()) {
+                        ROS_INFO("Upsampling update tree");
+                        pcl::PointCloud<pcl::PointXYZ> updatePclCenteredUpsampled = update_pcl_centered + upsamplePointCloud(update_pcl_centered, voxel_radius, target_N_points);
+                        sensor_msgs::PointCloud2 updatePclCenteredUpsampledMsg = pclToMsg(updatePclCenteredUpsampled, frame_id, stamp);
+                        output_bag.write(input_topic + "/update/pcl_centered_upsampled", msg.getTime(), updatePclCenteredUpsampledMsg);
+                    }
+                    /**
+                    if (target_N_points > diff_pcl_centered.points.size()) {
+                        pcl::PointCloud<pcl::PointXYZ> diffPclCenteredUpsampled = diff_pcl_centered + upsamplePointCloud(diff_pcl_centered, voxel_radius, target_N_points);
+                        sensor_msgs::PointCloud2 diffPclCenteredUpsampledMsg = pclToMsg(diffPclCenteredUpsampled, frame_id, stamp);
+                        output_bag.write(input_topic + "/diff/pcl_centered_upsampled", msg.getTime(), diffPclCenteredUpsampledMsg);
+                    }
+                    **/
+                }
             }
             if (prev_tree != nullptr) delete prev_tree;
             prev_tree = current_tree;

@@ -6,6 +6,7 @@
 
 #include "octree_diff.h"
 
+
 std::pair<octomap::OcTree, octomap::OcTree> calcOctreeDiff(
         const octomap::OcTree& tree1,
         const octomap::OcTree& tree2,

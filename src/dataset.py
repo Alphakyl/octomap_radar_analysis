@@ -13,7 +13,7 @@ from dca1000_device.msg import RadarCubeMsg
 import rospy
 
 
-def process_messages(dataset_dir, rdc_bag_filename, diff_bag_filename, rdc_topic, map_topic, odds_topic):  # rdc_messages, map_messages, odds_messages):
+def process_messages(dataset_dir, rdc_bag_filename, diff_bag_filename, rdc_topic, map_topic, odds_topic):
     rdc_bag = rosbag.Bag(os.path.join(dataset_dir, rdc_bag_filename))
     map_bag = rosbag.Bag(os.path.join(dataset_dir, diff_bag_filename))
 
@@ -30,7 +30,6 @@ def process_messages(dataset_dir, rdc_bag_filename, diff_bag_filename, rdc_topic
                 try:
                     map_idx, (_, map_msg, _) = next(map_iter)
                 except StopIteration:
-                    print('Finished MAP')
                     break
             else:
                 rdc_frames_idx.append(rdc_idx)
@@ -38,38 +37,32 @@ def process_messages(dataset_dir, rdc_bag_filename, diff_bag_filename, rdc_topic
                 prev_time_diff = rospy.Duration.from_sec(99999999)
                 break
 
+    map_frames_idx, rdc_frames_idx = np.array(map_frames_idx), np.array(rdc_frames_idx)
     print(len(map_frames_idx), len(rdc_frames_idx))
 
-    rdc_samples_list = []
-    map_points_list = []
-    odds_arrays_list = []
+    rdc_frames = []
+    map_frames = []
+    odds_frames = []
     for topic, msg, t in tqdm(rdc_bag.read_messages(topics=[rdc_topic])):
-        rdc_samples = np.array(msg.samples)
-        rdc_samples_list.append(rdc_samples)
+        samples = np.array(msg.samples)
+        samples = samples[:-1:2] + 1j * samples[1::2]
+        print('Got', len(samples), 'samples')
+        reshaped_samples = samples.reshape(msg.num_tx, msg.num_rx, msg.num_chirps_per_frame, msg.num_adc_samples_per_chirp)
+        rdc_frames.append(reshaped_samples)
     for topic, msg, t in tqdm(map_bag.read_messages(topics=[map_topic, odds_topic])):
         if topic == map_topic:
             point_generator = pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True)
-            map_array = np.array(list(point_generator))
-            map_points_list.append(map_array)
+            frame = np.array([np.array(list(point)) for point in point_generator])
+            map_frames.append(frame)
         elif topic == odds_topic:
-            odds_array = np.array(msg.data)
-            odds_arrays_list.append(odds_array)
+            odds_frames.append(np.array(msg.data))
 
     rdc_bag.close()
     map_bag.close()
-
-    print(len(rdc_samples_list), len(map_points_list), len(odds_arrays_list))
+    rdc_frames, map_frames, odds_frames = np.array(rdc_frames)[rdc_frames_idx], np.array(map_frames)[map_frames_idx], np.array(odds_frames)[map_frames_idx]
+    print(rdc_frames.shape, map_frames.shape, odds_frames.shape)
 
     return 0, 0, 0
-        # if map_msg.header.stamp
-    # matched = []
-    # j = 0
-    # for i in range(len(messages1)):
-    #     while j < len(messages2) and messages2[j].header.stamp < messages1[i].header.stamp:
-    #         j += 1
-    #     if j < len(messages2) and messages2[j].header.stamp == messages1[i].header.stamp:
-    #         matched.append((messages1[i], messages2[j]))
-    # return matched
 
 
 def main(

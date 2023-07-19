@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 
-
-import os
-import pickle
-import time
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+import pickle
 from tqdm import tqdm
 
 import rosbag
-from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import Float64MultiArray
-from sensor_msgs import point_cloud2 as pc2
-from dca1000_device.msg import RadarCubeMsg
 import rospy
+from sensor_msgs import point_cloud2 as pc2
 
 
 def map_pcl_to_grid(
@@ -63,7 +58,7 @@ def map_pcl_to_grid(
     print('Saved points to grid:', saved_points_count)
     print('Discarded points:', discarded_points_count)
 
-    return occupancy_grids, visual_grids
+    return np.array(occupancy_grids), visual_grids
 
 
 def process_messages(
@@ -103,13 +98,12 @@ def process_messages(
                 break
 
     map_frames_idx, rdc_frames_idx = np.array(map_frames_idx), np.array(rdc_frames_idx)
-    print(len(map_frames_idx), len(rdc_frames_idx))
-
     rdc_frames, map_update_frames, map_diff_frames, update_odds_frames, diff_odds_frames = [], [], [], [], []
+
     for topic, msg, t in tqdm(rdc_bag.read_messages(topics=[rdc_topic])):
         samples = np.array(msg.samples)
         samples = samples[:-1:2] + 1j * samples[1::2]
-        reshaped_samples = samples.reshape(msg.num_tx, msg.num_rx, msg.num_chirps_per_frame, msg.num_adc_samples_per_chirp)
+        reshaped_samples = samples.reshape(msg.num_tx * msg.num_rx, msg.num_chirps_per_frame, msg.num_adc_samples_per_chirp)
         rdc_frames.append(reshaped_samples)
     for topic, msg, t in tqdm(map_bag.read_messages(topics=[map_update_topic, map_diff_topic, update_odds_topic, diff_odds_topic])):
         if topic == map_update_topic:
@@ -127,7 +121,7 @@ def process_messages(
 
     rdc_bag.close()
     map_bag.close()
-    rdc_frames = [rdc_frames[i] for i in rdc_frames_idx]
+    rdc_frames = np.array([rdc_frames[i] for i in rdc_frames_idx])
     map_update_frames = [map_update_frames[i] for i in map_frames_idx]
     map_diff_frames = [map_diff_frames[i] for i in map_frames_idx]
     update_odds_frames = [update_odds_frames[i] for i in map_frames_idx]
@@ -177,55 +171,48 @@ def visualize_grid(
         ax.set_xlim([x_min_meters, x_max_meters])
         ax.set_ylim([y_min_meters, y_max_meters])
         ax.set_zlim([z_min_meters, z_max_meters])
-
         plt.draw()
         plt.pause(1)
         ax.clear()
     plt.close()
 
 
-def main(
+def read_raw_data(
+        dataset_dir='mapping/coloradar',
+        rdc_bag_filename='ec_hallways_run0.bag',
+        diff_bag_filename='ec_hallways_run0_lidar_octomap_diff.bag',
         rdc_topic='/dca_node/data_cube',
         update_map_pcl_topic='/lidar_filtered/octomap_full/update/pcl_centered_full',
         update_map_odds_topic='/lidar_filtered/octomap_full/update/pcl_occupancy_odds',
         diff_map_pcl_topic='/lidar_filtered/octomap_full/diff/pcl_centered_full',
         diff_map_odds_topic='/lidar_filtered/octomap_full/diff/pcl_occupancy_odds',
+        use_cash=True, visualize=False
 ):
-    dataset_dir = 'mapping/coloradar'
-    rdc_bag_filename = 'ec_hallways_run0.bag'
-    diff_bag_filename = 'ec_hallways_run0_lidar_octomap_diff.bag'
     resolution_meters = 0.25
-    x_min_meters = -6
-    x_max_meters = 6
+    x_min_meters = -4
+    x_max_meters = 4
     y_min_meters = 0
     y_max_meters = 8
-    z_min_meters = -2
-    z_max_meters = 4
+    z_min_meters = -3
+    z_max_meters = 3
 
     rdc_frames, update_occupancy_grids, update_visual_grids, diff_occupancy_grids, diff_visual_grids = process_messages(
         os.path.join(os.path.expanduser('~'), dataset_dir), rdc_bag_filename, diff_bag_filename,
         rdc_topic=rdc_topic, map_update_topic=update_map_pcl_topic, update_odds_topic=update_map_odds_topic,
         map_diff_topic=diff_map_pcl_topic, diff_odds_topic=diff_map_odds_topic,
-        use_cash=True,
+        use_cash=use_cash,
         resolution_meters=resolution_meters,
         x_min_meters=x_min_meters, x_max_meters=x_max_meters,
         y_min_meters=y_min_meters, y_max_meters=y_max_meters,
         z_min_meters=z_min_meters, z_max_meters=z_max_meters
     )
-    visualize_grid(
-        diff_visual_grids, odds_threshold=-0.4,
-        x_min_meters=x_min_meters, x_max_meters=x_max_meters,
-        y_min_meters=y_min_meters, y_max_meters=y_max_meters,
-        z_min_meters=z_min_meters, z_max_meters=z_max_meters
-    )
 
+    if visualize:
+        visualize_grid(
+            diff_visual_grids, odds_threshold=-0.4,
+            x_min_meters=x_min_meters, x_max_meters=x_max_meters,
+            y_min_meters=y_min_meters, y_max_meters=y_max_meters,
+            z_min_meters=z_min_meters, z_max_meters=z_max_meters
+        )
 
-if __name__ == "__main__":
-    main()
-    # parser = argparse.ArgumentParser(description="Adjust pointcloud sizes in a rosbag file.")
-    # parser.add_argument("--file", type=str, help="Path to the rosbag file.")
-    # parser.add_argument("--topic", type=str, help="Topic of the PointCloud2 messages.")
-    # parser.add_argument("-N", type=int, help="Target number of points.")
-    # args = parser.parse_args()
-    #
-    # main(args.bag_path, args.topic, args.target_points)
+    return rdc_frames, diff_occupancy_grids

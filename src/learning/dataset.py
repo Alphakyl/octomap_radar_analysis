@@ -78,7 +78,7 @@ def get_dataset(
         update_map_odds_topic='/lidar_filtered/octomap_full/update/pcl_occupancy_odds',
         diff_map_pcl_topic='/lidar_filtered/octomap_full/diff/pcl_centered_full',
         diff_map_odds_topic='/lidar_filtered/octomap_full/diff/pcl_occupancy_odds',
-        use_cash=True, visualize=False
+        use_cash=False, visualize=False
 ):
     rdc_frames, diff_occupancy_grids = read_raw_data(
         dataset_dir=dataset_dir, rdc_bag_filename=rdc_bag_filename, diff_bag_filename=diff_bag_filename,
@@ -89,7 +89,7 @@ def get_dataset(
     print('Raw input shape:', rdc_frames.shape)
     print('Raw output shape:', diff_occupancy_grids.shape)
     # Input shape: (990, 12, 128, 128)
-    # Output shape: (990, 32, 32, 24)
+    # Output shape: (990, 32, 32, 32)
 
     x_train, x_valid, x_test, y_train, y_valid, y_test = split_dataset(
         x_total=rdc_frames,

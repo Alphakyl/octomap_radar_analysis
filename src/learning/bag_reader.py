@@ -193,8 +193,8 @@ def read_raw_data(
     x_max_meters = 4
     y_min_meters = 0
     y_max_meters = 8
-    z_min_meters = -3
-    z_max_meters = 3
+    z_min_meters = -4
+    z_max_meters = 4
 
     rdc_frames, update_occupancy_grids, update_visual_grids, diff_occupancy_grids, diff_visual_grids = process_messages(
         os.path.join(os.path.expanduser('~'), dataset_dir), rdc_bag_filename, diff_bag_filename,

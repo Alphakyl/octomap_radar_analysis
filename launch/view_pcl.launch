@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <node type="play" name="player1" pkg="rosbag" output="screen" args="--clock /home/arpg/mapping/coloradar/ec_hallways_run0_lidar_octomap.bag"/>
+  <node type="play" name="player2" pkg="rosbag" output="screen" args="--clock /home/arpg/mapping/coloradar/ec_hallways_run0_lidar_octomap_diff.bag"/>
+  
+  <arg name="rviz_file" default="/home/arpg/mapping/lidar_ws/src/octomap_radar_analysis/launch/view_pcl.rviz"/>
+  <node type="rviz" name="rviz" pkg="rviz" output="screen" args="-d $(arg rviz_file)"/>
+  
+</launch>

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(isrr_analysis)
 
 find_package(catkin REQUIRED COMPONENTS
+  dca1000_device
   octomap_msgs
   octomap_ros
   roscpp

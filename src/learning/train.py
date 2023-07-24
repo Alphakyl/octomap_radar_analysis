@@ -65,7 +65,7 @@ def main():
     learning_rate = 0.01
     best_valid_loss = float('inf')
 
-    train_loader, valid_loader, test_loader = get_dataset(use_cash=True)
+    train_loader, valid_loader, test_loader = get_dataset(use_cash=True, visualize=True)
     device = get_device()
     model = BaseTransform().double().to(device)
     criterion = nn.MSELoss()

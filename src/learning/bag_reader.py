@@ -37,6 +37,7 @@ def map_pcl_to_grid(
 
         # calculate the grid cell for each point in the frame
         for point, point_odds in zip(frame, odds):
+            occupancy_prob = 1 / (1 + np.exp(-point_odds))
             x, y, z = point
             x_idx = int((x - x_min_meters) / resolution_meters)
             y_idx = int((y - y_min_meters) / resolution_meters)
@@ -44,11 +45,11 @@ def map_pcl_to_grid(
             # check if indices are within the grid dimensions
             if 0 <= x_idx < x_bins and 0 <= y_idx < y_bins and 0 <= z_idx < z_bins:
                 # update the occupancy odds for the grid cell
-                occupancy_grid[x_idx, y_idx, z_idx] = point_odds
+                occupancy_grid[x_idx, y_idx, z_idx] = occupancy_prob
                 x_vis.append(x)
                 y_vis.append(y)
                 z_vis.append(z)
-                odd_vis.append(point_odds)
+                odd_vis.append(occupancy_prob)
                 saved_points_count += 1
             else:
                 discarded_points_count += 1
@@ -156,25 +157,28 @@ def visualize_grid(
         y_min_meters=0, y_max_meters=8,
         z_min_meters=0, z_max_meters=4
 ):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    try:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
 
-    for i, grid in enumerate(grids):
-        xs, ys, zs, odds = grid
-        target_points = np.where(odds >= odds_threshold)
-        xs, ys, zs, odds = xs[target_points], ys[target_points], zs[target_points], odds[target_points]
-        cmap = plt.get_cmap('jet')
-        ax.scatter(xs, ys, zs, c=odds, s=1, cmap=cmap)
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_xlim([x_min_meters, x_max_meters])
-        ax.set_ylim([y_min_meters, y_max_meters])
-        ax.set_zlim([z_min_meters, z_max_meters])
-        plt.draw()
-        plt.pause(1)
-        ax.clear()
-    plt.close()
+        for i, grid in enumerate(grids):
+            xs, ys, zs, odds = grid
+            target_points = np.where(odds >= odds_threshold)
+            xs, ys, zs, odds = xs[target_points], ys[target_points], zs[target_points], odds[target_points]
+            cmap = plt.get_cmap('jet')
+            ax.scatter(xs, ys, zs, c=odds, s=1, cmap=cmap)
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            ax.set_xlim([x_min_meters, x_max_meters])
+            ax.set_ylim([y_min_meters, y_max_meters])
+            ax.set_zlim([z_min_meters, z_max_meters])
+            plt.draw()
+            plt.pause(1)
+            ax.clear()
+        plt.close()
+    except KeyboardInterrupt:
+        return
 
 
 def read_raw_data(

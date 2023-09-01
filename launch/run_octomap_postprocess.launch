@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+
+<launch>
+    <node pkg="isrr_analysis" type="octomap_postprocess" name="octomap_postprocess" output="screen" >
+        <param name="input_bag_path" value="$(env HOME)/mapping/coloradar/ec_hallways_run0_lidar_octomap.bag" />
+        <param name="input_topic" value="/lidar_filtered/octomap_full" />
+        <param name="odometry_topic" value="/lidar_ground_truth" />
+        <param name="marker_lifetime" value="0.2" />
+        <!-- <param name="target_N_points" value="700" /> -->
+        <!-- <param name="voxel_radius" value="0.25" /> -->
+    </node>
+</launch>

@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="rviz_file" default="/home/ann/lidar_mapping/src/octomap_radar_analysis/launch/view_bag.rviz"/>
+  <arg name="rviz_file" default="/home/kyle/ws/octomap_ws/src/isrr_analysis/launch/view_bag.rviz"/>
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_file)" output="screen"/>
 </launch>

@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -28,4 +29,5 @@ class BaseTransform(nn.Module):
         out = self.layer3(out)
         # print("Shape after layer4: ", out.shape)
         # [32, 32, 32, 32]
+        out = torch.sigmoid(out)
         return out

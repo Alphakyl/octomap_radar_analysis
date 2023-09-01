@@ -2,10 +2,10 @@
 
 import torch
 import torch.optim as optim
-from torch.autograd import Variable
 from torch import nn
 
 # export PYTHONPATH=$PYTHONPATH:src/octomap_radar_analysis/src
+
 from learning.dataset import get_dataset
 from learning.model import BaseTransform
 
@@ -51,24 +51,15 @@ def validate_model(valid_loader, model, criterion, device):
     return valid_loss / len(valid_loader)
 
 
-def test_model(test_loader, model, device):
-    model.eval()
-
-    with torch.no_grad():
-        for data in test_loader:
-            data = data.to(device)
-            output = model(data)
-
-
 def main():
     num_epochs = 10
     learning_rate = 0.01
     best_valid_loss = float('inf')
 
-    train_loader, valid_loader, test_loader = get_dataset(use_cash=True, visualize=True)
+    train_loader, valid_loader, test_loader = get_dataset(use_cash=True, visualize=False)
     device = get_device()
     model = BaseTransform().double().to(device)
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(num_epochs):
@@ -83,9 +74,9 @@ def main():
             torch.save(model.state_dict(), 'model.pt')
             best_valid_loss = valid_loss
 
-    print('Starting testing:')
-    test_model(test_loader, model, device)
-    print('Testing finished.')
+    # print('Starting testing:')
+    # test_model(test_loader, model, device)
+    # print('Testing finished.')
 
 
 if __name__ == "__main__":
